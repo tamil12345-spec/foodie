@@ -10,7 +10,7 @@ export default function Checkout() {
   const { state } = useLocation();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const stripe = useStripe();
+  const stripe = useStripe()(process.env.REACT_APP_STRIPE_PUBLIC_KEY);
   const elements = useElements();
   const [loading, setLoading] = useState(false);
   const [address, setAddress] = useState({
