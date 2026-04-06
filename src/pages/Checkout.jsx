@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useStripe, useElements, CardElement } from '@stripe/react-stripe-js';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
@@ -10,9 +9,9 @@ export default function Checkout() {
   const { state } = useLocation();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const stripe = useStripe()(process.env.REACT_APP_STRIPE_PUBLIC_KEY);
-  const elements = useElements();
   const [loading, setLoading] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState('cod'); // 'cod' or 'upi'
+  const [upiId, setUpiId] = useState('');
   const [address, setAddress] = useState({
     street: user?.address?.street || '',
     city: user?.address?.city || '',
@@ -21,22 +20,23 @@ export default function Checkout() {
   });
   const { clearCart } = useCart();
 
-
   if (!state) { navigate('/cart'); return null; }
 
   const { items, restaurant, subtotal, deliveryFee, total } = state;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!stripe || !elements) return;
     if (!address.street || !address.city) {
       toast.error('Please fill in delivery address');
+      return;
+    }
+    if (paymentMethod === 'upi' && !upiId.trim()) {
+      toast.error('Please enter your UPI ID');
       return;
     }
 
     setLoading(true);
     try {
-      // Step 1: Create order first (paymentStatus: 'pending')
       const orderRes = await api.post('/orders', {
         restaurantId: restaurant._id,
         items: items.map(i => ({
@@ -48,17 +48,17 @@ export default function Checkout() {
         totalAmount: total,
         deliveryFee,
         deliveryAddress: address,
+        paymentMethod,
         paymentStatus: 'paid',
       });
 
       const order = orderRes.data.order;
-      console.log({order});
-      
       toast.success('Order placed successfully! 🎉');
-      navigate(`/orders/${order._id}`);
       clearCart();
+      navigate(`/orders/${order._id}`);
     } catch (err) {
       console.error(err);
+      toast.error('Failed to place order. Please try again.');
     }
 
     setLoading(false);
@@ -107,32 +107,61 @@ export default function Checkout() {
             </div>
           </div>
 
-          {/* Payment */}
+          {/* Payment Method */}
           <div className="card p-6">
-            <h2 className="font-bold text-lg mb-4">Payment Details</h2>
-            <div className="border border-gray-200 rounded-xl p-4">
-              <CardElement
-                options={{
-                  style: {
-                    base: {
-                      fontSize: '16px',
-                      color: '#374151',
-                      fontFamily: 'Plus Jakarta Sans, sans-serif',
-                      '::placeholder': { color: '#9ca3af' },
-                    },
-                    invalid: { color: '#ef4444' },
-                  },
-                }}
-              />
+            <h2 className="font-bold text-lg mb-4">Payment Method</h2>
+            <div className="space-y-3">
+
+              {/* Cash on Delivery */}
+              <label className={`flex items-center gap-3 border rounded-xl p-4 cursor-pointer transition ${paymentMethod === 'cod' ? 'border-orange-500 bg-orange-50' : 'border-gray-200'}`}>
+                <input
+                  type="radio"
+                  name="payment"
+                  value="cod"
+                  checked={paymentMethod === 'cod'}
+                  onChange={() => setPaymentMethod('cod')}
+                  className="accent-orange-500"
+                />
+                <span className="text-xl">💵</span>
+                <div>
+                  <p className="font-semibold text-gray-800">Cash on Delivery</p>
+                  <p className="text-xs text-gray-500">Pay when your order arrives</p>
+                </div>
+              </label>
+
+              {/* UPI */}
+              <label className={`flex items-center gap-3 border rounded-xl p-4 cursor-pointer transition ${paymentMethod === 'upi' ? 'border-orange-500 bg-orange-50' : 'border-gray-200'}`}>
+                <input
+                  type="radio"
+                  name="payment"
+                  value="upi"
+                  checked={paymentMethod === 'upi'}
+                  onChange={() => setPaymentMethod('upi')}
+                  className="accent-orange-500"
+                />
+                <span className="text-xl">📱</span>
+                <div>
+                  <p className="font-semibold text-gray-800">UPI</p>
+                  <p className="text-xs text-gray-500">Pay via any UPI app</p>
+                </div>
+              </label>
+
+              {/* UPI ID input */}
+              {paymentMethod === 'upi' && (
+                <input
+                  className="input mt-2"
+                  placeholder="Enter UPI ID (e.g. name@upi)"
+                  value={upiId}
+                  onChange={e => setUpiId(e.target.value)}
+                />
+              )}
             </div>
-            <p className="text-xs text-gray-400 mt-2">
-              🔒 Secured by Stripe. Test card: <span className="font-mono">4242 4242 4242 4242</span>
-            </p>
+            <p className="text-xs text-gray-400 mt-3">🔒 Your payment info is safe with us</p>
           </div>
 
           <button
             type="submit"
-            disabled={loading || !stripe}
+            disabled={loading}
             className="btn-primary w-full text-lg py-4 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {loading ? (
@@ -141,10 +170,10 @@ export default function Checkout() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                 </svg>
-                Processing...
+                Placing Order...
               </span>
             ) : (
-              `Pay $${total.toFixed(2)}`
+              `Place Order · $${total.toFixed(2)}`
             )}
           </button>
         </form>
