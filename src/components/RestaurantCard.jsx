@@ -22,9 +22,17 @@ export default function RestaurantCard({ restaurant }) {
           <span>🚚 ${restaurant.deliveryFee}</span>
         </div>
         <div className="flex flex-wrap gap-1 mt-3">
-          {restaurant.cuisine?.map(c => (
-            <span key={c} className="bg-orange-50 text-orange-600 text-xs px-2 py-1 rounded-full font-medium">{c}</span>
-          ))}
+
+          {/* Line 25 - handle both string and array */}
+          {Array.isArray(restaurant.cuisine)
+            ? restaurant.cuisine.map(c => (
+              <span key={c} className="bg-orange-50 text-orange-600 text-xs px-2 py-1 rounded-full font-medium">{c}</span>
+            ))
+            : restaurant.cuisine && (
+              <span className="bg-orange-50 text-orange-600 text-xs px-2 py-1 rounded-full font-medium">{restaurant.cuisine}</span>
+            )
+          }
+
         </div>
       </div>
     </Link>
