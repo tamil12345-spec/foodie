@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
-
+const response = await axios.get(".../api/restaurants");
+const restaurants = response.data.restaurants;
 export default function RestaurantCard({ restaurant }) {
   return (
     <Link to={`/restaurants/${restaurant._id}`} className="card hover:shadow-md transition hover:-translate-y-1 block">
@@ -22,9 +23,9 @@ export default function RestaurantCard({ restaurant }) {
           <span>🚚 ${restaurant.deliveryFee}</span>
         </div>
         <div className="flex flex-wrap gap-1 mt-3">
-          {restaurant.cuisine?.map(c => (
-            <span key={c} className="bg-orange-50 text-orange-600 text-xs px-2 py-1 rounded-full font-medium">{c}</span>
-          ))}
+         {Array.isArray(restaurants) && restaurants.map(r => <span key={c} className="bg-orange-50 text-orange-600 text-xs px-2 py-1 rounded-full font-medium">{c}</span>)} 
+            
+          
         </div>
       </div>
     </Link>
