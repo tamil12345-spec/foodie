@@ -8,7 +8,7 @@ export default function RestaurantDetail() {
   const [restaurant, setRestaurant] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState('All');
-  const { addToCart, cart, restaurantId } = useCart();
+  const { addToCart, updateQuantity, cart, restaurantId } = useCart();
 
   useEffect(() => {
     api.get(`/restaurants/${id}`)
@@ -92,9 +92,23 @@ export default function RestaurantDetail() {
               <div className="flex items-center justify-between mt-3">
                 <span className="font-bold text-orange-500 text-lg">${item.price.toFixed(2)}</span>
                 {getCartQty(item._id) > 0 ? (
-                  <span className="bg-orange-100 text-orange-600 text-sm font-semibold px-3 py-1 rounded-full">
-                    In cart: {getCartQty(item._id)}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => updateQuantity(item._id, getCartQty(item._id) - 1)}
+                      className="w-8 h-8 flex items-center justify-center bg-orange-100 hover:bg-orange-200 text-orange-600 font-bold rounded-lg transition"
+                    >
+                      −
+                    </button>
+                    <span className="text-sm font-bold text-gray-800 w-4 text-center">
+                      {getCartQty(item._id)}
+                    </span>
+                    <button
+                      onClick={() => addToCart(item._id, id)}
+                      className="w-8 h-8 flex items-center justify-center bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-lg transition"
+                    >
+                      +
+                    </button>
+                  </div>
                 ) : (
                   <button
                     onClick={() => addToCart(item._id, id)}
