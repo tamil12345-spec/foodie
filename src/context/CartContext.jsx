@@ -26,6 +26,7 @@ export const CartProvider = ({ children }) => {
   };
 
   const addToCart = async (menuItemId, restaurantId, quantity = 1) => {
+    console.log("addToCart called:", { menuItemId, restaurantId });
     if (!user) { toast.error('Please login first'); return; }
     try {
       const res = await api.post('/cart/add', { menuItemId, restaurantId, quantity });
