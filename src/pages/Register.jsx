@@ -36,17 +36,24 @@ export default function Register() {
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">Full Name</label>
               <input type="text" className="input" placeholder="John Doe"
-                value={form.name} onChange={e => setForm({...form, name: e.target.value})} required />
+                value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required />
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">Email</label>
               <input type="email" className="input" placeholder="you@example.com"
-                value={form.email} onChange={e => setForm({...form, email: e.target.value})} required />
+                value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} required />
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">Password</label>
-              <input type="password" className="input" placeholder="Min 6 characters"
-                value={form.password} onChange={e => setForm({...form, password: e.target.value})} required />
+              <input
+                type="password"
+                className="input"
+                placeholder="Min 6 characters"
+                autoComplete="new-password"
+                value={form.password}
+                onChange={e => setForm({ ...form, password: e.target.value })}
+                required
+              />
             </div>
             <button type="submit" disabled={loading} className="btn-primary w-full text-base py-3 mt-2">
               {loading ? 'Creating account...' : 'Create Account'}

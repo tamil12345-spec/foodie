@@ -37,11 +37,18 @@ export default function Login() {
               <input type="email" className="input" placeholder="you@example.com"
                 value={form.email} onChange={e => setForm({...form, email: e.target.value})} required />
             </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Password</label>
-              <input type="password" className="input" placeholder="••••••••"
-                value={form.password} onChange={e => setForm({...form, password: e.target.value})} required />
-            </div>
+           <div>
+  <label className="block text-sm font-semibold text-gray-700 mb-1">Password</label>
+  <input
+    type="password"
+    className="input"
+    placeholder="••••••••"
+    autoComplete="current-password"
+    value={form.password}
+    onChange={e => setForm({...form, password: e.target.value})}
+    required
+  />
+</div>
             <button type="submit" disabled={loading} className="btn-primary w-full text-base py-3 mt-2">
               {loading ? 'Signing in...' : 'Sign In'}
             </button>
