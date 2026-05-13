@@ -223,7 +223,7 @@ export default function Checkout() {
                 />
                 <span className="text-xl">💳</span>
                 <div>
-                  <p className="font-semibold text-gray-800">Pay Online</p>
+                  <p className="font-semibold text-gray-800">Razorpay</p>
                   <p className="text-xs text-gray-500">UPI · Cards · Net Banking via Razorpay</p>
                 </div>
               </label>
