@@ -48,31 +48,34 @@ export default function Checkout() {
     setLoading(true);
     try {
       // Step 1: Create Razorpay order from backend
-      const { data } = await api.post('/payments/razorpay/create-order', {
+      // ✅ Fixed URL: /payments/create-order (removed extra /razorpay/)
+      const { data } = await api.post('/payments/create-order', {
         amount: total,
       });
 
       // Step 2: Open Razorpay popup
+      // ✅ Fixed: data.order.id, data.order.amount (controller returns { success, order })
       const options = {
-        key: process.env.REACT_APP_RAZORPAY_KEY_ID,
-        amount: data.amount,
-        currency: data.currency || 'INR',
-        name: 'FoodApp',
+        key:         process.env.REACT_APP_RAZORPAY_KEY_ID,
+        amount:      data.order.amount,
+        currency:    data.order.currency || 'INR',
+        name:        'FoodRush',
         description: `Order from ${restaurant.name}`,
-        order_id: data.id,
+        order_id:    data.order.id,
         prefill: {
-          name: user?.name || '',
-          email: user?.email || '',
+          name:    user?.name  || '',
+          email:   user?.email || '',
           contact: user?.phone || '',
         },
         theme: { color: '#f97316' },
         handler: async (response) => {
           // Step 3: Verify payment on backend
+          // ✅ Fixed URL: /payments/verify-payment (removed extra /razorpay/)
           try {
-            await api.post('/payments/razorpay/verify', {
-              razorpay_order_id: response.razorpay_order_id,
+            await api.post('/payments/verify-payment', {
+              razorpay_order_id:   response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
+              razorpay_signature:  response.razorpay_signature,
             });
 
             // Step 4: Save order to DB
@@ -223,7 +226,7 @@ export default function Checkout() {
                 />
                 <span className="text-xl">💳</span>
                 <div>
-                  <p className="font-semibold text-gray-800">Razorpay</p>
+                  <p className="font-semibold text-gray-800">Pay Online</p>
                   <p className="text-xs text-gray-500">UPI · Cards · Net Banking via Razorpay</p>
                 </div>
               </label>
