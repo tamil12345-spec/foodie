@@ -109,7 +109,7 @@ export default function OrderDetail() {
               <span className={`text-xs font-semibold px-2 py-1 rounded-full ${order.paymentStatus === 'paid' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
                 {order.paymentStatus === 'paid' ? '✓ Paid' : 'Pending'}
               </span>
-              <span className="text-gray-500 text-sm">via Stripe</span>
+              <span className="text-gray-500 text-sm">via upi</span>
             </div>
           </div>
         </div>
