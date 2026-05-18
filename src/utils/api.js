@@ -21,15 +21,18 @@ api.interceptors.response.use(
     const config = err.config;
 
     // Retry once if it's a network error and hasn't been retried yet
+    // Render free tier cold starts can take up to 50s — wait longer before retry
     if (!err.response && !config._retried) {
       config._retried = true;
-      console.warn('Network error — retrying after cold start...');
-      await new Promise(res => setTimeout(res, 3000)); // wait 3s then retry
+      console.warn('Network error — retrying after cold start delay...');
+      await new Promise(res => setTimeout(res, 15000)); // wait 15s then retry
       return api(config);
     }
 
     if (!err.response) {
-      return Promise.reject(new Error('Server is unavailable. Please try again in a moment.'));
+      return Promise.reject(
+        new Error('Server is waking up. Please wait a moment and try again.')
+      );
     }
 
     if (err.response.status === 401 && window.location.pathname !== '/login') {
