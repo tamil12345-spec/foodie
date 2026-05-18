@@ -3,21 +3,83 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
+// ── Validation ────────────────────────────────────────────────────────────
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function validateLogin(form) {
+  const errors = {};
+
+  if (!form.email.trim()) {
+    errors.email = 'Email is required.';
+  } else if (!EMAIL_RE.test(form.email.trim())) {
+    errors.email = 'Please enter a valid email address.';
+  }
+
+  if (!form.password) {
+    errors.password = 'Password is required.';
+  } else if (form.password.length < 6) {
+    errors.password = 'Password must be at least 6 characters.';
+  }
+
+  return errors;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+
+function FieldError({ msg }) {
+  if (!msg) return null;
+  return (
+    <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
+      <span aria-hidden="true">⚠</span> {msg}
+    </p>
+  );
+}
+
+function inputClass(error) {
+  return `input ${error ? 'border-red-400 focus:ring-red-400' : ''}`;
+}
+
+// ── Component ─────────────────────────────────────────────────────────────
+
 export default function Login() {
-  const [form, setForm] = useState({ email: '', password: '' });
+  const [form, setForm]       = useState({ email: '', password: '' });
+  const [errors, setErrors]   = useState({});
+  const [touched, setTouched] = useState({});
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
-  const navigate = useNavigate();
+  const [showPwd, setShowPwd] = useState(false);
+  const { login }             = useAuth();
+  const navigate              = useNavigate();
+
+  const handleChange = (field, value) => {
+    const updated = { ...form, [field]: value };
+    setForm(updated);
+    if (touched[field]) {
+      const errs = validateLogin(updated);
+      setErrors(prev => ({ ...prev, [field]: errs[field] }));
+    }
+  };
+
+  const handleBlur = (field) => {
+    setTouched(prev => ({ ...prev, [field]: true }));
+    const errs = validateLogin(form);
+    setErrors(prev => ({ ...prev, [field]: errs[field] }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setTouched({ email: true, password: true });
+    const errs = validateLogin(form);
+    setErrors(errs);
+    if (Object.keys(errs).length > 0) return;
+
     setLoading(true);
     try {
-      await login(form.email, form.password);
+      await login(form.email.trim(), form.password);
       toast.success('Welcome back! 👋');
       navigate('/');
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Login failed');
+      toast.error(err.response?.data?.message || 'Login failed. Please check your credentials.');
     }
     setLoading(false);
   };
@@ -30,29 +92,61 @@ export default function Login() {
           <h1 className="text-3xl font-extrabold text-gray-900">Welcome back</h1>
           <p className="text-gray-500 mt-2">Sign in to your FoodRush account</p>
         </div>
+
         <div className="card p-8">
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+
+            {/* Email */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">Email</label>
-              <input type="email" className="input" placeholder="you@example.com"
-                value={form.email} onChange={e => setForm({...form, email: e.target.value})} required />
+              <input
+                type="email"
+                className={inputClass(errors.email)}
+                placeholder="you@example.com"
+                value={form.email}
+                onChange={e => handleChange('email', e.target.value)}
+                onBlur={() => handleBlur('email')}
+                aria-invalid={!!errors.email}
+                autoComplete="email"
+              />
+              <FieldError msg={errors.email} />
             </div>
-           <div>
-  <label className="block text-sm font-semibold text-gray-700 mb-1">Password</label>
-  <input
-    type="password"
-    className="input"
-    placeholder="••••••••"
-    autoComplete="current-password"
-    value={form.password}
-    onChange={e => setForm({...form, password: e.target.value})}
-    required
-  />
-</div>
-            <button type="submit" disabled={loading} className="btn-primary w-full text-base py-3 mt-2">
-              {loading ? 'Signing in...' : 'Sign In'}
+
+            {/* Password */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Password</label>
+              <div className="relative">
+                <input
+                  type={showPwd ? 'text' : 'password'}
+                  className={`${inputClass(errors.password)} pr-10`}
+                  placeholder="••••••••"
+                  autoComplete="current-password"
+                  value={form.password}
+                  onChange={e => handleChange('password', e.target.value)}
+                  onBlur={() => handleBlur('password')}
+                  aria-invalid={!!errors.password}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPwd(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs font-medium select-none"
+                  aria-label={showPwd ? 'Hide password' : 'Show password'}
+                >
+                  {showPwd ? 'Hide' : 'Show'}
+                </button>
+              </div>
+              <FieldError msg={errors.password} />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn-primary w-full text-base py-3 mt-2"
+            >
+              {loading ? 'Signing in…' : 'Sign In'}
             </button>
           </form>
+
           <p className="text-center text-gray-500 text-sm mt-6">
             Don't have an account?{' '}
             <Link to="/register" className="text-orange-500 font-semibold hover:underline">Sign up</Link>
