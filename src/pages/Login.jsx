@@ -151,6 +151,27 @@ export default function Login() {
             Don't have an account?{' '}
             <Link to="/register" className="text-orange-500 font-semibold hover:underline">Sign up</Link>
           </p>
+
+          {/* Admin credentials — for demo/evaluation */}
+          <div className="mt-5 p-4 bg-orange-50 border border-orange-200 rounded-xl text-sm">
+            <p className="font-bold text-orange-700 mb-2 flex items-center gap-1">
+              <span>🔑</span> Demo Admin Credentials
+            </p>
+            <div className="space-y-1 text-gray-700">
+              <p>Email: <span className="font-mono font-semibold text-gray-900">admin@foodapp.com</span></p>
+              <p>Password: <span className="font-mono font-semibold text-gray-900">Admin@9876!</span></p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setForm({ email: 'admin@foodapp.com', password: 'Admin@9876!' });
+                setErrors({});
+              }}
+              className="mt-3 w-full text-xs font-semibold text-orange-600 border border-orange-300 rounded-lg py-1.5 hover:bg-orange-100 transition"
+            >
+              Fill admin credentials
+            </button>
+          </div>
         </div>
       </div>
     </div>
