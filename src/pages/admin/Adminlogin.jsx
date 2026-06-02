@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../../utils/api';
+import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -19,9 +19,6 @@ import toast from 'react-hot-toast';
 //      role: 'admin',
 //    });
 // ─────────────────────────────────────────────────────────────────────────────
-
-const ADMIN_EMAIL_HINT    = 'admin@foodapp.com';
-const ADMIN_PASSWORD_HINT = 'Admin@1234';
 
 // ── Validation ───────────────────────────────────────────────────────────────
 
@@ -59,13 +56,15 @@ function inputClass(hasError) {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function AdminLogin() {
-  const navigate  = useNavigate();
-  const [form, setForm]           = useState({ email: '', password: '' });
-  const [errors, setErrors]       = useState({});
-  const [touched, setTouched]     = useState({});
-  const [showPwd, setShowPwd]     = useState(false);
-  const [loading, setLoading]     = useState(false);
-  const [attempts, setAttempts]   = useState(0);
+  const navigate          = useNavigate();
+  const { login }         = useAuth(); // ← shared auth — no direct api calls here
+
+  const [form, setForm]       = useState({ email: '', password: '' });
+  const [errors, setErrors]   = useState({});
+  const [touched, setTouched] = useState({});
+  const [showPwd, setShowPwd] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [attempts, setAttempts] = useState(0);
   const MAX_ATTEMPTS = 5;
 
   // Live-validate a single field once it has been touched
@@ -96,36 +95,29 @@ export default function AdminLogin() {
     setTouched({ email: true, password: true });
     const errs = validateLogin(form);
     setErrors(errs);
-
     if (Object.keys(errs).length > 0) return;
 
     setLoading(true);
     try {
-      const res = await api.post('/auth/login', {
-        email: form.email.trim().toLowerCase(),
-        password: form.password,
-      });
+      // login() handles api call, localStorage, and setUser — no duplication
+      const data = await login(form.email.trim().toLowerCase(), form.password);
 
-      const { token, user } = res.data;
-
-      if (user?.role !== 'admin') {
+      if (data.user?.role !== 'admin') {
         toast.error('Access denied. Admin accounts only.');
         setAttempts(a => a + 1);
         setLoading(false);
         return;
       }
 
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
-      toast.success(`Welcome back, ${user.name}!`);
+      toast.success(`Welcome back, ${data.user.name}!`);
       navigate('/admin/dashboard');
     } catch (err) {
       const msg = err.response?.data?.message || 'Invalid credentials. Please try again.';
       toast.error(msg);
       setAttempts(a => a + 1);
-      // Surface a field-level error so users know what to fix
       setErrors(prev => ({ ...prev, password: 'Incorrect email or password.' }));
     }
+
     setLoading(false);
   };
 
@@ -143,14 +135,6 @@ export default function AdminLogin() {
           </div>
           <h1 className="text-2xl font-extrabold text-gray-900">Admin Portal</h1>
           <p className="text-gray-500 text-sm mt-1">Sign in to manage your food delivery platform</p>
-        </div>
-
-        {/* Credentials hint card (remove in production!) */}
-        <div className="mb-5 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-xs text-orange-700">
-          <p className="font-bold mb-1">🔑 Default Admin Credentials</p>
-          <p>Email: <span className="font-mono font-semibold">{ADMIN_EMAIL_HINT}</span></p>
-          <p>Password: <span className="font-mono font-semibold">{ADMIN_PASSWORD_HINT}</span></p>
-          <p className="mt-2 text-orange-500 italic">Remove this hint card before going to production.</p>
         </div>
 
         {/* Lock warning */}
