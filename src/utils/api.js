@@ -1,15 +1,18 @@
 import axios from 'axios';
 
+const PUBLIC_ROUTES = ['/auth/login', '/auth/register'];
+
 const api = axios.create({
   baseURL: process.env.REACT_APP_API_URL || 'https://food-back-0l68.onrender.com/api',
   timeout: 60000,
 });
 
-// Request interceptor — attach token
+// Request interceptor — skip token for public routes
 api.interceptors.request.use(config => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  const isPublic = PUBLIC_ROUTES.some(route => config.url?.includes(route));
+  if (!isPublic) {
+    const token = localStorage.getItem('token');
+    if (token) config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
@@ -19,13 +22,13 @@ api.interceptors.response.use(
   res => res,
   async err => {
     const config = err.config;
+    const isPublic = PUBLIC_ROUTES.some(route => config.url?.includes(route));
 
-    // Retry once if it's a network error and hasn't been retried yet
-    // Render free tier cold starts can take up to 50s — wait longer before retry
+    // Cold-start retry — network errors only, not 4xx
     if (!err.response && !config._retried) {
       config._retried = true;
       console.warn('Network error — retrying after cold start delay...');
-      await new Promise(res => setTimeout(res, 15000)); // wait 15s then retry
+      await new Promise(res => setTimeout(res, 15000));
       return api(config);
     }
 
@@ -35,12 +38,13 @@ api.interceptors.response.use(
       );
     }
 
-    if (err.response.status === 401 && window.location.pathname !== '/login') {
+    // Only redirect on 401 for protected routes, never for login/register
+    if (err.response.status === 401 && !isPublic) {
       localStorage.removeItem('token');
       window.location.href = '/login';
     }
 
-    return Promise.reject(err);
+    return Promise.reject(err); // always propagate so UI can handle it
   }
 );
 
