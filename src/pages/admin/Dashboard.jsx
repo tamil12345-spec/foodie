@@ -50,7 +50,7 @@ function ErrorBanner({ message, onRetry }) {
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-export default function AdminDashboard() {
+export default function Dashboard() {
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(null);
