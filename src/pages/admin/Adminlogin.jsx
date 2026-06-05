@@ -1,27 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth, ADMIN_CREDENTIALS } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Default admin credentials (seed these into your DB via your seed script)
-//
-//    Email   : admin@foodapp.com
-//    Password : Admin@1234
-//
-//  Your backend seed / setup script should create this user with role "admin".
-//  Example (Node/Mongoose):
-//
-//    await User.create({
-//      name: 'Super Admin',
-//      email: 'admin@foodapp.com',
-//      password: await bcrypt.hash('Admin@1234', 10),
-//      role: 'admin',
-//    });
-// ─────────────────────────────────────────────────────────────────────────────
-
-// ── Validation ───────────────────────────────────────────────────────────────
-
+// ── Validation ────────────────────────────────────────────────────────────────
+// Min-length 8 to match AuthContext.validateLogin (was 6)
 function validateLogin({ email, password }) {
   const errors = {};
 
@@ -33,8 +16,8 @@ function validateLogin({ email, password }) {
 
   if (!password) {
     errors.password = 'Password is required.';
-  } else if (password.length < 6) {
-    errors.password = 'Password must be at least 6 characters.';
+  } else if (password.length < 8) {
+    errors.password = 'Password must be at least 8 characters.';
   }
 
   return errors;
@@ -54,10 +37,11 @@ function inputClass(hasError) {
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
+const MAX_ATTEMPTS = 5;
 
 export default function AdminLogin() {
-  const navigate          = useNavigate();
-  const { login }         = useAuth(); // ← shared auth — no direct api calls here
+  const navigate  = useNavigate();
+  const { login } = useAuth();
 
   const [form, setForm]       = useState({ email: '', password: '' });
   const [errors, setErrors]   = useState({});
@@ -65,9 +49,10 @@ export default function AdminLogin() {
   const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
   const [attempts, setAttempts] = useState(0);
-  const MAX_ATTEMPTS = 5;
 
-  // Live-validate a single field once it has been touched
+  const locked       = attempts >= MAX_ATTEMPTS;
+  const attemptsLeft = MAX_ATTEMPTS - attempts;
+
   const handleChange = (field, value) => {
     const updated = { ...form, [field]: value };
     setForm(updated);
@@ -85,13 +70,8 @@ export default function AdminLogin() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (locked) return;
 
-    if (attempts >= MAX_ATTEMPTS) {
-      toast.error('Too many failed attempts. Please wait a moment before trying again.');
-      return;
-    }
-
-    // Mark all fields as touched and run full validation
     setTouched({ email: true, password: true });
     const errs = validateLogin(form);
     setErrors(errs);
@@ -99,7 +79,6 @@ export default function AdminLogin() {
 
     setLoading(true);
     try {
-      // login() handles api call, localStorage, and setUser — no duplication
       const data = await login(form.email.trim().toLowerCase(), form.password);
 
       if (data.user?.role !== 'admin') {
@@ -111,18 +90,31 @@ export default function AdminLogin() {
 
       toast.success(`Welcome back, ${data.user.name}!`);
       navigate('/admin/dashboard');
+
     } catch (err) {
-      const msg = err.response?.data?.message || 'Invalid credentials. Please try again.';
-      toast.error(msg);
       setAttempts(a => a + 1);
-      setErrors(prev => ({ ...prev, password: 'Incorrect email or password.' }));
+
+      // Route field-level errors from AuthContext to inline fields
+      if (err.validationErrors) {
+        setErrors(err.validationErrors);
+        setTouched({ email: true, password: true });
+      } else {
+        // Use normalised err.message from api.js interceptor
+        const msg = err.apiError || err.message || 'Invalid credentials. Please try again.';
+        toast.error(msg);
+        setErrors(prev => ({ ...prev, password: 'Incorrect email or password.' }));
+      }
     }
 
     setLoading(false);
   };
 
-  const attemptsLeft = MAX_ATTEMPTS - attempts;
-  const locked       = attempts >= MAX_ATTEMPTS;
+  // One-click fill from the single source of truth in AuthContext
+  const fillAdminCredentials = () => {
+    setForm({ email: ADMIN_CREDENTIALS.email, password: ADMIN_CREDENTIALS.password });
+    setErrors({});
+    setTouched({});
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 flex items-center justify-center px-4">
@@ -137,7 +129,7 @@ export default function AdminLogin() {
           <p className="text-gray-500 text-sm mt-1">Sign in to manage your food delivery platform</p>
         </div>
 
-        {/* Lock warning */}
+        {/* Lockout warning */}
         {locked && (
           <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-600">
             ⛔ Account temporarily locked after {MAX_ATTEMPTS} failed attempts. Please refresh the page to try again.
@@ -157,14 +149,14 @@ export default function AdminLogin() {
                 type="email"
                 autoComplete="username"
                 placeholder="admin@foodapp.com"
-                className={inputClass(errors.email)}
+                className={inputClass(touched.email && errors.email)}
                 value={form.email}
                 onChange={e => handleChange('email', e.target.value)}
                 onBlur={() => handleBlur('email')}
-                aria-invalid={!!errors.email}
+                aria-invalid={!!(touched.email && errors.email)}
                 disabled={locked}
               />
-              <FieldError msg={errors.email} />
+              <FieldError msg={touched.email && errors.email} />
             </div>
 
             {/* Password */}
@@ -177,11 +169,11 @@ export default function AdminLogin() {
                   type={showPwd ? 'text' : 'password'}
                   autoComplete="current-password"
                   placeholder="••••••••"
-                  className={`${inputClass(errors.password)} pr-10`}
+                  className={`${inputClass(touched.password && errors.password)} pr-10`}
                   value={form.password}
                   onChange={e => handleChange('password', e.target.value)}
                   onBlur={() => handleBlur('password')}
-                  aria-invalid={!!errors.password}
+                  aria-invalid={!!(touched.password && errors.password)}
                   disabled={locked}
                 />
                 <button
@@ -193,7 +185,7 @@ export default function AdminLogin() {
                   {showPwd ? '🙈' : '👁️'}
                 </button>
               </div>
-              <FieldError msg={errors.password} />
+              <FieldError msg={touched.password && errors.password} />
             </div>
 
             {/* Attempt counter */}
@@ -217,10 +209,34 @@ export default function AdminLogin() {
               ) : 'Sign in'}
             </button>
           </form>
+
+          {/* Demo credentials — sourced from ADMIN_CREDENTIALS, no hardcoded strings */}
+          <div className="mt-6 p-4 bg-orange-50 border border-orange-200 rounded-xl text-sm">
+            <p className="font-bold text-orange-700 mb-2 flex items-center gap-1">
+              🔑 Demo Admin Credentials
+            </p>
+            <div className="space-y-1 text-gray-700">
+              <p>Email:{' '}
+                <span className="font-mono font-semibold text-gray-900">{ADMIN_CREDENTIALS.email}</span>
+              </p>
+              <p>Password:{' '}
+                <span className="font-mono font-semibold text-gray-900">{ADMIN_CREDENTIALS.password}</span>
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={fillAdminCredentials}
+              disabled={locked}
+              className="mt-3 w-full text-xs font-semibold text-orange-600 border border-orange-300 rounded-lg py-1.5 hover:bg-orange-100 transition disabled:opacity-50"
+            >
+              Fill admin credentials
+            </button>
+          </div>
         </div>
 
         <p className="text-center text-xs text-gray-400 mt-6">
-          Not an admin? <a href="/" className="text-orange-500 hover:underline">Go to main app</a>
+          Not an admin?{' '}
+          <a href="/" className="text-orange-500 hover:underline">Go to main app</a>
         </p>
       </div>
     </div>

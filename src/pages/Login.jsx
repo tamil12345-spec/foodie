@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, ADMIN_CREDENTIALS } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
 // ── Validation ────────────────────────────────────────────────────────────
@@ -18,8 +18,8 @@ function validateLogin(form) {
 
   if (!form.password) {
     errors.password = 'Password is required.';
-  } else if (form.password.length < 6) {
-    errors.password = 'Password must be at least 6 characters.';
+  } else if (form.password.length < 8) {
+    errors.password = 'Password must be at least 8 characters.';
   }
 
   return errors;
@@ -75,11 +75,18 @@ export default function Login() {
 
     setLoading(true);
     try {
-      await login(form.email.trim(), form.password);
+      await login(form.email.trim().toLowerCase(), form.password);
       toast.success('Welcome back! 👋');
       navigate('/');
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Login failed. Please check your credentials.');
+      if (err.validationErrors) {
+        setErrors(err.validationErrors);
+        setTouched({ email: true, password: true });
+      } else if (err.apiError) {
+        toast.error(err.apiError);
+      } else {
+        toast.error('Login failed. Please check your credentials.');
+      }
     }
     setLoading(false);
   };
@@ -98,33 +105,37 @@ export default function Login() {
 
             {/* Email */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Email</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                Email <span className="text-red-500">*</span>
+              </label>
               <input
                 type="email"
-                className={inputClass(errors.email)}
+                className={inputClass(touched.email && errors.email)}
                 placeholder="you@example.com"
                 value={form.email}
                 onChange={e => handleChange('email', e.target.value)}
                 onBlur={() => handleBlur('email')}
-                aria-invalid={!!errors.email}
+                aria-invalid={!!(touched.email && errors.email)}
                 autoComplete="email"
               />
-              <FieldError msg={errors.email} />
+              <FieldError msg={touched.email && errors.email} />
             </div>
 
             {/* Password */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Password</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                Password <span className="text-red-500">*</span>
+              </label>
               <div className="relative">
                 <input
                   type={showPwd ? 'text' : 'password'}
-                  className={`${inputClass(errors.password)} pr-10`}
+                  className={`${inputClass(touched.password && errors.password)} pr-10`}
                   placeholder="••••••••"
                   autoComplete="current-password"
                   value={form.password}
                   onChange={e => handleChange('password', e.target.value)}
                   onBlur={() => handleBlur('password')}
-                  aria-invalid={!!errors.password}
+                  aria-invalid={!!(touched.password && errors.password)}
                 />
                 <button
                   type="button"
@@ -135,7 +146,7 @@ export default function Login() {
                   {showPwd ? 'Hide' : 'Show'}
                 </button>
               </div>
-              <FieldError msg={errors.password} />
+              <FieldError msg={touched.password && errors.password} />
             </div>
 
             <button
@@ -149,7 +160,9 @@ export default function Login() {
 
           <p className="text-center text-gray-500 text-sm mt-6">
             Don't have an account?{' '}
-            <Link to="/register" className="text-orange-500 font-semibold hover:underline">Sign up</Link>
+            <Link to="/register" className="text-orange-500 font-semibold hover:underline">
+              Sign up
+            </Link>
           </p>
 
           {/* Admin credentials — for demo/evaluation */}
@@ -158,14 +171,23 @@ export default function Login() {
               <span>🔑</span> Demo Admin Credentials
             </p>
             <div className="space-y-1 text-gray-700">
-              <p>Email: <span className="font-mono font-semibold text-gray-900">admin@foodapp.com</span></p>
-              <p>Password: <span className="font-mono font-semibold text-gray-900">Admin@9876!</span></p>
+              <p>Email:{' '}
+                <span className="font-mono font-semibold text-gray-900">
+                  {ADMIN_CREDENTIALS.email}
+                </span>
+              </p>
+              <p>Password:{' '}
+                <span className="font-mono font-semibold text-gray-900">
+                  {ADMIN_CREDENTIALS.password}
+                </span>
+              </p>
             </div>
             <button
               type="button"
               onClick={() => {
-                setForm({ email: 'admin@foodapp.com', password: 'Admin@9876!' });
+                setForm({ email: ADMIN_CREDENTIALS.email, password: ADMIN_CREDENTIALS.password });
                 setErrors({});
+                setTouched({});
               }}
               className="mt-3 w-full text-xs font-semibold text-orange-600 border border-orange-300 rounded-lg py-1.5 hover:bg-orange-100 transition"
             >
