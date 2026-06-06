@@ -41,7 +41,7 @@ export const validateRegister = ({ name, email, password }) => {
 // ─── Admin seed credentials ────────────────────────────────────────────────────
 export const ADMIN_CREDENTIALS = {
   email:    'admin@foodapp.com',
-  password: 'Admin@1234',
+  password: 'Admin@9876!',
   role:     'admin',
 };
 
