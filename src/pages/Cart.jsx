@@ -6,19 +6,29 @@ import api from '../utils/api';
 export default function Cart() {
   const { cart, updateQuantity, clearCart, restaurantId } = useCart();
   const [restaurant, setRestaurant] = useState(null);
-  const [items, setItems] = useState([]);
+  const [items, setItems]           = useState([]);
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (restaurantId) {
-      api.get(`/restaurants/${restaurantId}`).then(res => setRestaurant(res.data.restaurant));
-    }
+    if (!restaurantId) return;
+
+    // ── Fix: extract string ID whether restaurantId is an object or string ──
+    const id = typeof restaurantId === 'object'
+      ? (restaurantId?._id || restaurantId?.id || String(restaurantId))
+      : restaurantId;
+
+    if (!id || id === 'undefined' || id === '[object Object]') return;
+
+    api.get(`/restaurants/${id}`)
+      .then(res => setRestaurant(res.data.restaurant))
+      .catch(err => console.error('[Cart] Failed to fetch restaurant:', err.message));
   }, [restaurantId]);
 
   useEffect(() => {
     if (restaurant && cart.length > 0) {
       const enriched = cart.map(cartItem => {
-        const menuItem = restaurant.menu?.find(m => m._id === (cartItem.menuItem?._id || cartItem.menuItem));
+        const itemId   = cartItem.menuItem?._id || cartItem.menuItem;
+        const menuItem = restaurant.menu?.find(m => m._id === itemId || m._id?.toString() === itemId?.toString());
         return { ...cartItem, details: menuItem };
       }).filter(i => i.details);
       setItems(enriched);
@@ -27,9 +37,9 @@ export default function Cart() {
     }
   }, [cart, restaurant]);
 
-  const subtotal = items.reduce((sum, i) => sum + (i.details?.price || 0) * i.quantity, 0);
+  const subtotal    = items.reduce((sum, i) => sum + (i.details?.price || 0) * i.quantity, 0);
   const deliveryFee = restaurant?.deliveryFee || 0;
-  const total = subtotal + deliveryFee;
+  const total       = subtotal + deliveryFee;
 
   if (cart.length === 0) return (
     <div className="max-w-2xl mx-auto px-4 py-20 text-center">
@@ -44,7 +54,8 @@ export default function Cart() {
     <div className="max-w-4xl mx-auto px-4 py-10">
       <h1 className="text-3xl font-extrabold text-gray-900 mb-8">Your Cart</h1>
       <div className="grid md:grid-cols-3 gap-8">
-        {/* Items */}
+
+        {/* ── Items ── */}
         <div className="md:col-span-2 space-y-4">
           {restaurant && (
             <div className="flex items-center gap-3 mb-4 p-4 bg-orange-50 rounded-xl">
@@ -58,7 +69,12 @@ export default function Cart() {
 
           {items.map(item => (
             <div key={item.details?._id} className="card p-4 flex gap-4 items-center">
-              <img src={item.details?.image} alt={item.details?.name} className="w-16 h-16 rounded-xl object-cover" />
+              <img
+                src={item.details?.image}
+                alt={item.details?.name}
+                className="w-16 h-16 rounded-xl object-cover flex-shrink-0"
+                onError={e => { e.target.style.display = 'none'; }}
+              />
               <div className="flex-1">
                 <h3 className="font-semibold text-gray-900">{item.details?.name}</h3>
                 <p className="text-orange-500 font-bold">${item.details?.price?.toFixed(2)}</p>
@@ -74,7 +90,9 @@ export default function Cart() {
                   className="w-8 h-8 rounded-full bg-orange-500 hover:bg-orange-600 text-white font-bold transition flex items-center justify-center"
                 >+</button>
               </div>
-              <p className="font-bold text-gray-900 w-16 text-right">${(item.details?.price * item.quantity).toFixed(2)}</p>
+              <p className="font-bold text-gray-900 w-16 text-right">
+                ${(item.details?.price * item.quantity).toFixed(2)}
+              </p>
             </div>
           ))}
 
@@ -83,7 +101,7 @@ export default function Cart() {
           </button>
         </div>
 
-        {/* Summary */}
+        {/* ── Summary ── */}
         <div className="card p-6 h-fit sticky top-20">
           <h2 className="font-bold text-lg text-gray-900 mb-4">Order Summary</h2>
           <div className="space-y-3 text-sm">
@@ -97,9 +115,19 @@ export default function Cart() {
               <span>Total</span><span className="text-orange-500">${total.toFixed(2)}</span>
             </div>
           </div>
+
+          {/* Min order check */}
+          {restaurant?.minOrder && subtotal < restaurant.minOrder && (
+            <p className="text-xs text-red-500 mt-3 text-center">
+              Minimum order is ${restaurant.minOrder.toFixed(2)}
+              (${(restaurant.minOrder - subtotal).toFixed(2)} more needed)
+            </p>
+          )}
+
           <button
+            disabled={!restaurant || (restaurant?.minOrder && subtotal < restaurant.minOrder)}
             onClick={() => navigate('/checkout', { state: { items, restaurant, subtotal, deliveryFee, total } })}
-            className="btn-primary w-full mt-6 text-center"
+            className="btn-primary w-full mt-6 text-center disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Proceed to Checkout →
           </button>
